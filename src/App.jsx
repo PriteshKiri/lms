@@ -9,9 +9,10 @@ import ManageUsers from './pages/ManageUsers'
 import Layout from './components/Layout'
 
 function App() {
-  const { user, loading } = useAuth()
+  const { user, loading, authInitialized } = useAuth()
 
-  if (loading) {
+  // Only show loading screen if we're still initializing auth
+  if (loading && !authInitialized) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-secondary">
         <div className="text-center">
@@ -43,19 +44,23 @@ function App() {
 
 // Protected route component
 function ProtectedRoute({ user, children }) {
+  // If there's no user, redirect to login
   if (!user) {
-    return <Navigate to="/login" />
+    console.log('Protected route - no user, redirecting to login')
+    return <Navigate to="/login" replace />
   }
-  
+
   return children ? children : <Outlet />
 }
 
 // Admin route component
 function AdminRoute({ user, children }) {
+  // If the user is not an admin, redirect to home
   if (user?.role !== 'admin') {
-    return <Navigate to="/" />
+    console.log('Admin route - user is not admin, redirecting to home')
+    return <Navigate to="/" replace />
   }
-  
+
   return children
 }
 

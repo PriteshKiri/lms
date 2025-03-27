@@ -10,78 +10,107 @@ export function useAuth() {
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [authInitialized, setAuthInitialized] = useState(false)
+
+  // Function to fetch user profile data
+  const fetchUserProfile = async (userId) => {
+    try {
+      const { data: profile, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', userId)
+        .single()
+
+      if (error) {
+        console.error('Error fetching user profile:', error)
+        return null
+      }
+
+      return profile
+    } catch (error) {
+      console.error('Exception fetching user profile:', error)
+      return null
+    }
+  }
 
   useEffect(() => {
-    // Check for active session on initial load
-    const getSession = async () => {
+    // This flag helps prevent race conditions
+    let isMounted = true;
+
+    const initializeAuth = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession()
+        // Get the current session
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+
+        if (sessionError) {
+          console.error('Error getting session:', sessionError)
+          if (isMounted) {
+            setUser(null)
+            setLoading(false)
+            setAuthInitialized(true)
+          }
+          return
+        }
 
         if (session?.user) {
-          // Get user profile data including role
-          const { data: profile, error } = await supabase
-            .from('users')
-            .select('*')
-            .eq('id', session.user.id)
-            .single()
+          // Get user profile data
+          const profile = await fetchUserProfile(session.user.id)
 
-          if (profile) {
+          if (profile && isMounted) {
             setUser({
               ...session.user,
               ...profile
             })
-          } else {
-            console.error('User profile not found:', error)
+          } else if (isMounted) {
+            // If no profile found, log out the user
+            await supabase.auth.signOut()
             setUser(null)
           }
-        } else {
+        } else if (isMounted) {
           setUser(null)
         }
       } catch (error) {
-        console.error('Error getting session:', error)
-        setUser(null)
+        console.error('Auth initialization error:', error)
+        if (isMounted) {
+          setUser(null)
+        }
       } finally {
-        setLoading(false)
+        if (isMounted) {
+          setLoading(false)
+          setAuthInitialized(true)
+        }
       }
     }
 
-    getSession()
+    initializeAuth()
 
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        try {
-          if (session?.user) {
-            // Get user profile data including role
-            const { data: profile, error } = await supabase
-              .from('users')
-              .select('*')
-              .eq('id', session.user.id)
-              .single()
+    // Set up auth state change listener only after initial auth check
+    const authListener = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('Auth state changed:', event, session ? 'Session exists' : 'No session')
 
-            if (profile) {
-              setUser({
-                ...session.user,
-                ...profile
-              })
-            } else {
-              console.error('User profile not found:', error)
-              setUser(null)
-            }
-          } else {
-            setUser(null)
-          }
-        } catch (error) {
-          console.error('Error in auth state change:', error)
+      if (event === 'SIGNED_IN' && session) {
+        const profile = await fetchUserProfile(session.user.id)
+
+        if (profile && isMounted) {
+          setUser({
+            ...session.user,
+            ...profile
+          })
+        }
+      } else if (event === 'SIGNED_OUT' || event === 'USER_DELETED') {
+        if (isMounted) {
           setUser(null)
-        } finally {
-          setLoading(false)
         }
       }
-    )
+
+      if (isMounted) {
+        setLoading(false)
+      }
+    })
 
     return () => {
-      subscription?.unsubscribe()
+      isMounted = false;
+      authListener.data.subscription.unsubscribe()
     }
   }, [])
 
@@ -89,6 +118,8 @@ export function AuthProvider({ children }) {
   const login = async (email, password) => {
     try {
       setLoading(true)
+
+      // Sign in with Supabase Auth
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password
@@ -96,7 +127,22 @@ export function AuthProvider({ children }) {
 
       if (error) throw error
 
-      // We don't need to manually set the user here as the onAuthStateChange listener will handle it
+      // Manually fetch the profile to ensure we have it
+      if (data.user) {
+        const profile = await fetchUserProfile(data.user.id)
+
+        if (profile) {
+          setUser({
+            ...data.user,
+            ...profile
+          })
+        } else {
+          // If no profile found, sign out
+          await supabase.auth.signOut()
+          throw new Error('User profile not found. Please contact an administrator.')
+        }
+      }
+
       return { data, error: null }
     } catch (error) {
       console.error('Login error:', error)
@@ -110,10 +156,13 @@ export function AuthProvider({ children }) {
   const logout = async () => {
     try {
       setLoading(true)
+
       const { error } = await supabase.auth.signOut()
       if (error) throw error
 
-      // We don't need to manually set the user to null here as the onAuthStateChange listener will handle it
+      // Manually set user to null for immediate UI update
+      setUser(null)
+
       return { error: null }
     } catch (error) {
       console.error('Logout error:', error)
@@ -125,6 +174,10 @@ export function AuthProvider({ children }) {
 
   // Update user profile
   const updateProfile = async (updates) => {
+    if (!user) {
+      return { error: new Error('No user is logged in') }
+    }
+
     try {
       setLoading(true)
 
@@ -137,6 +190,7 @@ export function AuthProvider({ children }) {
 
       // Update the user state with the new data
       setUser(prev => ({ ...prev, ...updates }))
+
       return { error: null }
     } catch (error) {
       console.error('Update profile error:', error)
@@ -149,6 +203,7 @@ export function AuthProvider({ children }) {
   const value = {
     user,
     loading,
+    authInitialized,
     login,
     logout,
     updateProfile

@@ -1,13 +1,25 @@
-import { Outlet, NavLink, useNavigate } from 'react-router-dom'
+import { Outlet, NavLink, useNavigate, Navigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 
 function Layout() {
-  const { user, logout } = useAuth()
+  const { user, logout, loading } = useAuth()
   const navigate = useNavigate()
 
   const handleLogout = async () => {
-    await logout()
-    navigate('/login')
+    try {
+      const { error } = await logout()
+      if (error) {
+        console.error('Logout error:', error)
+      }
+      navigate('/login')
+    } catch (error) {
+      console.error('Logout exception:', error)
+    }
+  }
+
+  // Safety check - if no user, redirect to login
+  if (!user) {
+    return <Navigate to="/login" />
   }
 
   return (

@@ -101,12 +101,12 @@ function Learn() {
   }
 
   return (
-    <div className="h-full flex flex-col">
-      <div className="mb-6">
+    <div className="h-full flex flex-col min-h-[calc(100vh-80px)]">
+      <div className="mb-4">
         <h1 className="text-2xl font-bold text-gray-800">Learn</h1>
-        
+
         {/* Module selector */}
-        <div className="mt-4">
+        <div className="mt-3">
           <label htmlFor="module-select" className="block text-sm font-medium text-gray-700 mb-1">
             Select Module
           </label>
@@ -120,7 +120,7 @@ function Learn() {
             {modules.length === 0 && (
               <option value="">No modules available</option>
             )}
-            
+
             {modules.map(module => (
               <option key={module.id} value={module.id}>
                 {module.title}
@@ -129,24 +129,24 @@ function Learn() {
           </select>
         </div>
       </div>
-      
+
       {error && (
         <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-md">
           {error}
         </div>
       )}
-      
+
       {loading ? (
         <div className="flex-1 flex items-center justify-center">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
         </div>
       ) : (
-        <div className="flex-1 flex flex-col md:flex-row gap-6">
+        <div className="flex-1 flex flex-col md:flex-row gap-6 h-full">
           {/* Video player */}
           <div className="md:w-2/3">
             {selectedChapter ? (
               <div className="bg-white rounded-lg shadow-md overflow-hidden">
-                <div className="aspect-w-16 aspect-h-9">
+                <div className="relative" style={{ paddingBottom: '56.25%', height: 0 }}>
                   <YouTube
                     videoId={getYoutubeVideoId(selectedChapter.youtube_link)}
                     opts={{
@@ -156,7 +156,8 @@ function Learn() {
                         autoplay: 0,
                       },
                     }}
-                    className="w-full h-full"
+                    className="absolute top-0 left-0 w-full h-full"
+                    containerClassName="w-full h-full min-h-[400px]"
                   />
                 </div>
                 <div className="p-4">
