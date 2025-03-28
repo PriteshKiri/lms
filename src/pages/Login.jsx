@@ -26,15 +26,14 @@ function Login() {
 
       if (error) throw error
 
-      // Only navigate if there was no error
+
       navigate('/')
     } catch (error) {
       console.error('Login submission error:', error)
       setError(error.message || 'Failed to log in')
       setLoading(false) // Make sure to set loading to false on error
     }
-    // Note: We don't set loading to false in finally because the AuthContext will handle that
-    // and we want to avoid race conditions
+
   }
 
   return (

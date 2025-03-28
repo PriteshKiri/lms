@@ -18,6 +18,7 @@ function Settings() {
     
     // Clear previous messages
     setMessage({ text: '', type: '' })
+
     
     // Validate password match if changing password
     if (password && password !== confirmPassword) {
@@ -27,7 +28,10 @@ function Settings() {
       })
       return
     }
+
+
     
+    // Disable form submission while loading
     try {
       setLoading(true)
       
@@ -104,6 +108,7 @@ function Settings() {
               required
             />
           </div>
+
           
           <div className="mb-4">
             <label htmlFor="email" className="block text-gray-700 font-medium mb-2">

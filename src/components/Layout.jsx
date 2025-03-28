@@ -1,6 +1,16 @@
 import { Outlet, NavLink, useNavigate, Navigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 
+/**
+ * Layout component that serves as the main structure for the application.
+ * It includes a sidebar with navigation links, a top header with a logout button,
+ * and a main content area where nested routes are rendered.
+ *
+ * The component uses the `useAuth` hook to get the current user, logout function,
+ * and loading state. If no user is authenticated, it redirects to the login page.
+ *
+ * @returns {JSX.Element} The rendered layout component.
+ */
 function Layout() {
   const { user, logout, loading } = useAuth()
   const navigate = useNavigate()
